@@ -1,11 +1,14 @@
 import gleam/dynamic/decode
+import gleam/function
 import gleam/http
 import gleam/http/response
 import gleam/json
+import gleam/list
 import gleam/option
 import gleam/time/timestamp
 import spotify_client/client
 import spotify_client/internal/decoders
+import spotify_client/internal/error
 import spotify_client/internal/requests
 import spotify_client/track
 
@@ -63,10 +66,6 @@ fn decoder() -> decode.Decoder(RecentlyPlayed) {
   decode.success(RecentlyPlayed(items:, limit:, total:, cursors:))
 }
 
-pub fn decode(res: response.Response(String)) {
-  requests.decode_builder(decoder())(res)
-}
-
 pub fn to_json(recently_played: RecentlyPlayed) {
   json.object([
     #("items", json.array(recently_played.items, play_history_to_json)),
@@ -77,10 +76,34 @@ pub fn to_json(recently_played: RecentlyPlayed) {
 }
 
 pub fn recently_played(client: client.AuthenticatedClient) {
-  requests.make_request(
-    client,
-    "/me/player/recently-played",
-    http.Get,
-    option.None,
-  )
+  recently_played_paginated(client, option.None)
+}
+
+type CursorParams {
+  After(after: String)
+  Before(before: String)
+}
+
+fn recently_played_paginated(
+  client: client.AuthenticatedClient,
+  cursor: option.Option(CursorParams),
+) {
+  let params =
+    case cursor {
+      option.Some(cursor) -> {
+        case cursor {
+          After(after) -> {
+            [#("after", after)]
+          }
+          Before(before) -> {
+            [#("before", before)]
+          }
+        }
+      }
+      option.None -> []
+    }
+    |> list.prepend(#("limit", "50"))
+
+  requests.get(client, "/me/player/recently-played", option.Some(params))
+  |> requests.send_request(decoder())
 }

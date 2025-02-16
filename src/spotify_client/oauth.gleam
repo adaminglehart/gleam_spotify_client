@@ -4,6 +4,7 @@ import gleam/http/request
 import gleam/http/response
 import gleam/io
 import gleam/option
+import gleam/result
 import gleam/time/calendar
 import gleam/time/duration
 import gleam/time/timestamp
@@ -13,10 +14,7 @@ import spotify_client/client.{
 }
 import spotify_client/internal/requests
 
-pub fn exchange_code(
-  client: BaseClient,
-  code: String,
-) -> request.Request(String) {
+pub fn exchange_code(client: BaseClient, code: String) {
   let body =
     uri.query_to_string([
       #("code", code),
@@ -26,6 +24,31 @@ pub fn exchange_code(
 
   base_token_request(client)
   |> request.set_body(body)
+  |> requests.send_request(token_response_decoder())
+}
+
+pub fn refresh_access_token(client: AuthenticatedClient) {
+  let body =
+    uri.query_to_string([
+      #("grant_type", "refresh_token"),
+      #("refresh_token", client.auth.refresh_token),
+      #("client_id", client.client_id),
+    ])
+
+  base_token_request(client)
+  |> request.set_body(body)
+  |> requests.send_request(refresh_response_decoder())
+  |> result.map(fn(tokens) {
+    TokenResponse(
+      access_token: tokens.access_token,
+      refresh_token: option.unwrap(
+        tokens.refresh_token,
+        client.auth.refresh_token,
+      ),
+      expires_at: tokens.expires_at,
+    )
+    |> authenticate_from_token_response(client)
+  })
 }
 
 fn base_token_request(client: SpotifyClient(_)) {
@@ -41,17 +64,6 @@ fn base_token_request(client: SpotifyClient(_)) {
   )
 }
 
-pub fn refresh_access_token(client: AuthenticatedClient) {
-  let body =
-    uri.query_to_string([
-      #("grant_type", "refresh_token"),
-      #("refresh_token", client.auth.refresh_token),
-      #("client_id", client.client_id),
-    ])
-
-  base_token_request(client) |> request.set_body(body)
-}
-
 pub type TokenResponse {
   TokenResponse(access_token: String, refresh_token: String, expires_at: String)
 }
@@ -64,7 +76,7 @@ pub type RefreshTokenResponse {
   )
 }
 
-pub fn decoder() -> decode.Decoder(TokenResponse) {
+fn token_response_decoder() -> decode.Decoder(TokenResponse) {
   use access_token <- decode.field("access_token", decode.string)
   use refresh_token <- decode.field("refresh_token", decode.string)
   use expires_in <- decode.field("expires_in", decode.int)
@@ -76,7 +88,7 @@ pub fn decoder() -> decode.Decoder(TokenResponse) {
   decode.success(TokenResponse(access_token:, refresh_token:, expires_at:))
 }
 
-pub fn refresh_response_decoder() -> decode.Decoder(RefreshTokenResponse) {
+fn refresh_response_decoder() -> decode.Decoder(RefreshTokenResponse) {
   use access_token <- decode.field("access_token", decode.string)
 
   use refresh_token <- decode.optional_field(
@@ -97,19 +109,9 @@ pub fn refresh_response_decoder() -> decode.Decoder(RefreshTokenResponse) {
   ))
 }
 
-pub fn decode(res: response.Response(String)) {
-  io.print(res.body)
-  requests.decode_builder(decoder())(res)
-}
-
-pub fn decode_refresh_response(res: response.Response(String)) {
-  io.print(res.body)
-  requests.decode_builder(refresh_response_decoder())(res)
-}
-
 pub fn authenticate_from_token_response(
-  client: BaseClient,
   response: TokenResponse,
+  client: SpotifyClient(_),
 ) {
   let assert Ok(expires_at) = timestamp.parse_rfc3339(response.expires_at)
 

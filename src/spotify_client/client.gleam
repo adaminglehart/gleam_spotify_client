@@ -24,7 +24,7 @@ pub type AuthenticatedClient =
   SpotifyClient(UserAuthentication)
 
 pub fn authenticate(
-  client: BaseClient,
+  client: SpotifyClient(_),
   access_token: String,
   refresh_token: String,
   expires_at: timestamp.Timestamp,

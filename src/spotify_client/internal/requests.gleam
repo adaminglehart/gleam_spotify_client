@@ -3,6 +3,7 @@ import gleam/dynamic/decode.{type Decoder}
 import gleam/http
 import gleam/http/request.{type Request, Request}
 import gleam/http/response.{type Response}
+import gleam/httpc
 import gleam/json
 import gleam/option
 import spotify_client/client
@@ -10,28 +11,30 @@ import spotify_client/internal/error.{type SpotifyError, JSONError}
 
 const base_url = "api.spotify.com/v1"
 
-pub fn make_request(
+pub fn get(
   client: client.AuthenticatedClient,
   path: String,
-  method: http.Method,
-  body: option.Option(String),
+  query: option.Option(List(#(String, String))),
 ) -> Request(String) {
+  base_request(client, path)
+  |> request.set_method(http.Get)
+  |> fn(request) -> Request(String) {
+    // we only want to set the body if it's not a GET request
+    case query {
+      option.Some(query) -> request.set_query(request, query)
+      _ -> request
+    }
+  }
+}
+
+fn base_request(client: client.AuthenticatedClient, path: String) {
   request.new()
   |> request.set_scheme(http.Https)
-  |> request.set_method(method)
   |> request.set_host(base_url)
   |> request.set_path(path)
   |> set_header("content-type", "application/json")
   |> set_header("Accept", "application/json")
   |> set_header("Authorization", "Bearer " <> client.auth.access_token)
-  |> fn(request) -> Request(String) {
-    // we only want to set the body if it's not a GET request
-    case method, body {
-      http.Post, option.Some(body_content) ->
-        request.set_body(request, body_content)
-      _, _ -> request
-    }
-  }
 }
 
 pub fn set_header(
@@ -77,6 +80,18 @@ pub fn decode_builder(decoder: Decoder(a)) {
       status -> {
         Error(error.APIError(status))
       }
+    }
+  }
+}
+
+pub fn send_request(
+  req: Request(String),
+  decoder: decode.Decoder(a),
+) -> Result(a, SpotifyError) {
+  case httpc.send(req) {
+    Ok(res) -> decode_builder(decoder)(res)
+    Error(_) -> {
+      Error(error.HTTPError)
     }
   }
 }
