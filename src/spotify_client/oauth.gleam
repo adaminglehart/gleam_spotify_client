@@ -43,5 +43,5 @@ pub fn decoder() -> decode.Decoder(TokenResponse) {
 }
 
 pub fn decode(res: response.Response(String)) {
-  requests.decode(decoder())(res)
+  requests.decode_builder(decoder())(res)
 }

@@ -1,8 +1,11 @@
 import gleam/dynamic/decode
 import gleam/http
 import gleam/http/response
+import gleam/json
 import gleam/option
+import gleam/time/timestamp
 import spotify_client/client
+import spotify_client/internal/decoders
 import spotify_client/internal/requests
 import spotify_client/track
 
@@ -17,6 +20,13 @@ fn play_history_decoder() {
   decode.success(PlayHistoryObject(track:, played_at:))
 }
 
+fn play_history_to_json(play_history: PlayHistoryObject) {
+  json.object([
+    #("track", track.to_json(play_history.track)),
+    #("played_at", json.string(play_history.played_at)),
+  ])
+}
+
 pub type Cursors {
   Cursors(after: String, before: String)
 }
@@ -26,6 +36,13 @@ fn cursor_decoder() {
   use before <- decode.field("before", decode.string)
 
   decode.success(Cursors(after:, before:))
+}
+
+fn cursor_to_json(cursors: Cursors) {
+  json.object([
+    #("after", json.string(cursors.after)),
+    #("before", json.string(cursors.before)),
+  ])
 }
 
 pub type RecentlyPlayed {
@@ -47,7 +64,16 @@ fn decoder() -> decode.Decoder(RecentlyPlayed) {
 }
 
 pub fn decode(res: response.Response(String)) {
-  requests.decode(decoder())(res)
+  requests.decode_builder(decoder())(res)
+}
+
+pub fn to_json(recently_played: RecentlyPlayed) {
+  json.object([
+    #("items", json.array(recently_played.items, play_history_to_json)),
+    #("limit", json.int(recently_played.limit)),
+    #("total", json.int(recently_played.total)),
+    #("cursors", cursor_to_json(recently_played.cursors)),
+  ])
 }
 
 pub fn recently_played(client: client.AuthenticatedClient) {

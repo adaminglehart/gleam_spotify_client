@@ -63,7 +63,7 @@ pub fn decoder(
   }
 }
 
-pub fn decode(decoder: Decoder(a)) {
+pub fn decode_builder(decoder: Decoder(a)) {
   fn(res: response.Response(String)) {
     let response.Response(body: body, status: status, ..) = res
 
