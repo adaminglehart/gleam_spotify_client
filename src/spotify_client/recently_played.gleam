@@ -1,14 +1,8 @@
 import gleam/dynamic/decode
-import gleam/function
-import gleam/http
-import gleam/http/response
 import gleam/json
 import gleam/list
 import gleam/option
-import gleam/time/timestamp
 import spotify_client/client
-import spotify_client/internal/decoders
-import spotify_client/internal/error
 import spotify_client/internal/requests
 import spotify_client/track
 

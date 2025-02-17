@@ -1,8 +1,6 @@
 import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request
-import gleam/http/response
-import gleam/io
 import gleam/option
 import gleam/result
 import gleam/time/calendar
@@ -65,14 +63,18 @@ fn base_token_request(client: SpotifyClient(_)) {
 }
 
 pub type TokenResponse {
-  TokenResponse(access_token: String, refresh_token: String, expires_at: String)
+  TokenResponse(
+    access_token: String,
+    refresh_token: String,
+    expires_at: timestamp.Timestamp,
+  )
 }
 
 pub type RefreshTokenResponse {
   RefreshTokenResponse(
     access_token: String,
     refresh_token: option.Option(String),
-    expires_at: String,
+    expires_at: timestamp.Timestamp,
   )
 }
 
@@ -83,7 +85,6 @@ fn token_response_decoder() -> decode.Decoder(TokenResponse) {
 
   let expires_at =
     timestamp.add(timestamp.system_time(), duration.seconds(expires_in))
-    |> timestamp.to_rfc3339(calendar.utc_offset)
 
   decode.success(TokenResponse(access_token:, refresh_token:, expires_at:))
 }
@@ -100,7 +101,6 @@ fn refresh_response_decoder() -> decode.Decoder(RefreshTokenResponse) {
 
   let expires_at =
     timestamp.add(timestamp.system_time(), duration.seconds(expires_in))
-    |> timestamp.to_rfc3339(calendar.utc_offset)
 
   decode.success(RefreshTokenResponse(
     access_token:,
@@ -113,12 +113,10 @@ pub fn authenticate_from_token_response(
   response: TokenResponse,
   client: SpotifyClient(_),
 ) {
-  let assert Ok(expires_at) = timestamp.parse_rfc3339(response.expires_at)
-
   client.authenticate(
     client,
     response.access_token,
     response.refresh_token,
-    expires_at,
+    response.expires_at,
   )
 }

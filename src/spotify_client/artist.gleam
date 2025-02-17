@@ -24,7 +24,3 @@ pub fn to_json(artist: SimplifiedArtist) {
     #("name", json.string(artist.name)),
   ])
 }
-
-pub fn get_artist(id: String) {
-  todo
-}

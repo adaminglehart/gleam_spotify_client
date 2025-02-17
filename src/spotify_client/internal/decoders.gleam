@@ -2,7 +2,6 @@ import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/float
 import gleam/json
-import gleam/result
 import gleam/time/timestamp
 
 pub fn timestamp_decoder() -> decode.Decoder(timestamp.Timestamp) {
