@@ -3,7 +3,6 @@ import gleam/http
 import gleam/http/request
 import gleam/option
 import gleam/result
-import gleam/time/calendar
 import gleam/time/duration
 import gleam/time/timestamp
 import gleam/uri

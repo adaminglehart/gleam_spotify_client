@@ -1,11 +1,11 @@
 import gleam/bit_array
 import gleam/dynamic/decode.{type Decoder}
-import gleam/http
+import gleam/http.{Get}
 import gleam/http/request.{type Request, Request}
 import gleam/http/response.{type Response}
 import gleam/httpc
 import gleam/json
-import gleam/option
+import gleam/option.{Some}
 import spotify_client/client
 import spotify_client/internal/error.{type SpotifyError, JSONError}
 
@@ -17,11 +17,11 @@ pub fn get(
   query: option.Option(List(#(String, String))),
 ) -> Request(String) {
   base_request(client, path)
-  |> request.set_method(http.Get)
+  |> request.set_method(Get)
   |> fn(request) -> Request(String) {
     // we only want to set the body if it's not a GET request
     case query {
-      option.Some(query) -> request.set_query(request, query)
+      Some(query) -> request.set_query(request, query)
       _ -> request
     }
   }

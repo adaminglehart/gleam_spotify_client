@@ -1,7 +1,10 @@
 import gleam/dynamic/decode
 import gleam/http/response
 import gleam/json
+import gleam/option
+import spotify_client/client
 import spotify_client/internal/requests
+import spotify_client/resource
 
 pub type Album {
   Album(id: String, name: String)
@@ -23,4 +26,13 @@ pub fn to_json(album: Album) {
 
 pub fn decode(res: response.Response(String)) {
   requests.decode_builder(decoder())(res)
+}
+
+pub fn get(client: client.AuthenticatedClient, id: String) {
+  requests.get(client, "/albums/" <> id, option.None)
+  |> requests.send_request(decoder())
+}
+
+pub fn api_resource() {
+  resource.define_resource("albums", decoder())
 }
