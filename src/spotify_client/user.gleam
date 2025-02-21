@@ -1,19 +1,12 @@
-import gleam/dynamic/decode
-import gleam/option
+import spotify_client/api_resources
 import spotify_client/client
-import spotify_client/internal/requests
-
-pub type MeResponse {
-  MeResponse(id: String, email: String)
-}
+import spotify_client/resource
+import spotify_client/types.{type Me, ID}
 
 pub fn me(client: client.AuthenticatedClient) {
-  requests.get(client, "/me", option.None) |> requests.send_request(decoder())
+  resource.build_get(api_resources.me())(client, ID(""))
 }
 
-fn decoder() -> decode.Decoder(MeResponse) {
-  use id <- decode.field("id", decode.string)
-  use email <- decode.field("email", decode.string)
-
-  decode.success(MeResponse(id, email))
+pub fn playlists(client: client.AuthenticatedClient, me: Me) {
+  resource.list(api_resources.me(), me.playlists)(client, ID(""))
 }
